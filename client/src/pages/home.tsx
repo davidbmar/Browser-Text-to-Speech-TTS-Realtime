@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import * as tts from "@diffusionstudio/vits-web";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
-import { Volume2, Play, Square, Download, Mic, Settings2, Loader2, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Volume2, Play, Square, Download, Mic, Settings2, Loader2, Check, Pause, SkipForward } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTTS } from "@/hooks/use-tts";
 
 interface Voice {
   id: string;
@@ -26,118 +28,95 @@ const VOICES: Voice[] = [
   { id: "es_ES-davefx-medium", name: "DaveFX", language: "Spanish" },
 ];
 
-type TTSStatus = "idle" | "downloading" | "generating" | "playing";
-
 export default function Home() {
-  const [text, setText] = useState("Hello! This is a real-time text to speech demo running entirely in your browser using WebAssembly and ONNX. No server required!");
+  const [text, setText] = useState("Hello! This is a real-time text to speech demo. It runs entirely in your browser using WebAssembly and ONNX. No server required! Each sentence is processed separately for faster playback.");
   const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
-  const [status, setStatus] = useState<TTSStatus>("idle");
-  const [downloadProgress, setDownloadProgress] = useState(0);
   const [volume, setVolume] = useState([80]);
   const [speed, setSpeed] = useState([1.0]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const [cachedVoices, setCachedVoices] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const {
+    speak,
+    stop,
+    pause,
+    resume,
+    setSpeed: setTTSSpeed,
+    setVolume: setTTSVolume,
+    isPlaying,
+    isPaused,
+    isGenerating,
+    isDownloading,
+    downloadProgress,
+    chunks,
+    currentChunkIndex,
+    progress,
+  } = useTTS({
+    voiceId: selectedVoice,
+    speed: speed[0],
+    volume: volume[0] / 100,
+    maxConcurrent: 2,
+  });
 
   const handleSpeak = useCallback(async () => {
     if (!text.trim()) return;
 
     try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-      if (currentAudioUrl) {
-        URL.revokeObjectURL(currentAudioUrl);
-      }
-
-      const isVoiceCached = cachedVoices.has(selectedVoice);
-      
-      if (!isVoiceCached) {
-        setStatus("downloading");
-        setDownloadProgress(0);
-      } else {
-        setStatus("generating");
-      }
-
-      await tts.download(selectedVoice as any, (progress) => {
-        if (!isVoiceCached) {
-          const percent = Math.round((progress.loaded / progress.total) * 100);
-          setDownloadProgress(percent);
-        }
-      });
-
-      if (!isVoiceCached) {
+      await speak(text);
+      if (!cachedVoices.has(selectedVoice)) {
         setCachedVoices(prev => {
           const newSet = new Set(prev);
           newSet.add(selectedVoice);
           return newSet;
         });
       }
-
-      setStatus("generating");
-
-      const wav = await tts.predict({
-        text: text,
-        voiceId: selectedVoice as any,
-      });
-
-      const audioUrl = URL.createObjectURL(wav);
-      setCurrentAudioUrl(audioUrl);
-
-      const audio = new Audio(audioUrl);
-      audio.volume = volume[0] / 100;
-      audio.playbackRate = speed[0];
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        setStatus("idle");
-      };
-
-      audio.onerror = () => {
-        setStatus("idle");
-      };
-
-      setStatus("playing");
-      await audio.play();
     } catch (error) {
       console.error("TTS Error:", error);
-      setStatus("idle");
       toast({
         title: "Speech generation failed",
         description: "There was an error generating speech. Please try again.",
         variant: "destructive",
       });
     }
-  }, [text, selectedVoice, volume, speed, currentAudioUrl, cachedVoices, toast]);
+  }, [text, selectedVoice, speak, cachedVoices, toast]);
 
   const handleStop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    stop();
+  }, [stop]);
+
+  const handlePauseResume = useCallback(() => {
+    if (isPaused) {
+      resume();
+    } else {
+      pause();
     }
-    setStatus("idle");
-  }, []);
+  }, [isPaused, pause, resume]);
 
   const handleVolumeChange = useCallback((newVolume: number[]) => {
     setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume[0] / 100;
-    }
-  }, []);
+    setTTSVolume(newVolume[0] / 100);
+  }, [setTTSVolume]);
 
   const handleSpeedChange = useCallback((newSpeed: number[]) => {
     setSpeed(newSpeed);
-    if (audioRef.current) {
-      audioRef.current.playbackRate = newSpeed[0];
-    }
-  }, []);
+    setTTSSpeed(newSpeed[0]);
+  }, [setTTSSpeed]);
 
-  const isProcessing = status === "downloading" || status === "generating";
-  const isPlaying = status === "playing";
+  const isProcessing = isDownloading || (isGenerating && chunks.length === 0);
+  const isActive = isPlaying || isGenerating;
 
   const selectedVoiceInfo = VOICES.find(v => v.id === selectedVoice);
+
+  const getChunkStatusColor = (status: string) => {
+    switch (status) {
+      case "done": return "bg-green-500";
+      case "playing": return "bg-primary animate-pulse";
+      case "ready": return "bg-blue-500";
+      case "generating": return "bg-yellow-500";
+      case "error": return "bg-red-500";
+      default: return "bg-muted";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -152,10 +131,10 @@ export default function Home() {
             Browser TTS
           </h1>
           <p className="text-muted-foreground text-lg">
-            Real-time text-to-speech powered by WebAssembly + ONNX
+            Real-time streaming text-to-speech with sentence chunking
           </p>
           <p className="text-muted-foreground/70 text-sm mt-1">
-            Runs entirely in your browser. Free. No API keys.
+            Starts playing as soon as the first sentence is ready
           </p>
         </header>
 
@@ -174,13 +153,15 @@ export default function Home() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 className="min-h-[140px] text-base resize-none"
-                disabled={isProcessing || isPlaying}
+                disabled={isActive}
               />
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>{text.length} characters</span>
                 <span className="text-muted-foreground/50">•</span>
                 <span>~{Math.ceil(text.split(/\s+/).filter(Boolean).length / 150)} min read</span>
+                <span className="text-muted-foreground/50">•</span>
+                <span>{text.split(/[.!?]+/).filter(s => s.trim()).length} sentences</span>
               </div>
             </CardContent>
           </Card>
@@ -198,7 +179,7 @@ export default function Home() {
                 <Select
                   value={selectedVoice}
                   onValueChange={setSelectedVoice}
-                  disabled={isProcessing || isPlaying}
+                  disabled={isActive}
                 >
                   <SelectTrigger data-testid="select-voice">
                     <SelectValue placeholder="Select a voice" />
@@ -209,6 +190,9 @@ export default function Home() {
                         <span className="flex items-center gap-2">
                           <span>{voice.name}</span>
                           <span className="text-muted-foreground text-xs">({voice.language})</span>
+                          {cachedVoices.has(voice.id) && (
+                            <Check className="w-3 h-3 text-green-500" />
+                          )}
                         </span>
                       </SelectItem>
                     ))}
@@ -275,32 +259,85 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {(status === "downloading" || status === "generating") && (
+          {isDownloading && (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="pt-6 space-y-3">
                 <div className="flex items-center gap-3">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  <span className="font-medium">
-                    {status === "downloading" ? "Downloading voice model..." : "Generating speech..."}
-                  </span>
+                  <span className="font-medium">Downloading voice model...</span>
                 </div>
-                {status === "downloading" && (
-                  <div className="space-y-2">
-                    <Progress value={downloadProgress} className="h-2" />
-                    <p className="text-sm text-muted-foreground text-right">{downloadProgress}%</p>
-                  </div>
-                )}
-                {status === "generating" && (
-                  <p className="text-sm text-muted-foreground">
-                    Processing text with neural TTS model...
-                  </p>
-                )}
+                <Progress value={downloadProgress} className="h-2" />
+                <p className="text-sm text-muted-foreground text-right">{downloadProgress}%</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {chunks.length > 0 && (
+            <Card className="border-primary/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="flex items-center gap-2">
+                    <SkipForward className="w-4 h-4" />
+                    Streaming Progress
+                  </span>
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {progress.current}/{progress.total} ready
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-1 flex-wrap">
+                  {chunks.map((chunk, index) => (
+                    <div
+                      key={chunk.id}
+                      className={`h-2 flex-1 min-w-[20px] rounded-full transition-colors ${getChunkStatusColor(chunk.status)}`}
+                      title={`Sentence ${index + 1}: ${chunk.status}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {chunks.map((chunk, index) => (
+                    <div 
+                      key={chunk.id}
+                      className={`flex items-start gap-2 p-2 rounded-md text-sm transition-colors ${
+                        chunk.status === "playing" 
+                          ? "bg-primary/10 border border-primary/30" 
+                          : chunk.status === "done"
+                          ? "bg-muted/30 text-muted-foreground"
+                          : "bg-muted/10"
+                      }`}
+                    >
+                      <Badge 
+                        variant={chunk.status === "playing" ? "default" : "secondary"}
+                        className="shrink-0 text-xs"
+                      >
+                        {index + 1}
+                      </Badge>
+                      <span className={chunk.status === "playing" ? "font-medium" : ""}>
+                        {chunk.text}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        className={`ml-auto shrink-0 text-xs ${
+                          chunk.status === "done" ? "text-green-600 border-green-600" :
+                          chunk.status === "playing" ? "text-primary border-primary" :
+                          chunk.status === "ready" ? "text-blue-600 border-blue-600" :
+                          chunk.status === "generating" ? "text-yellow-600 border-yellow-600" :
+                          ""
+                        }`}
+                      >
+                        {chunk.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
 
           <div className="flex gap-3">
-            {!isPlaying ? (
+            {!isActive ? (
               <Button
                 data-testid="button-speak"
                 onClick={handleSpeak}
@@ -311,7 +348,7 @@ export default function Home() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    {status === "downloading" ? "Downloading..." : "Generating..."}
+                    Downloading...
                   </>
                 ) : (
                   <>
@@ -321,22 +358,47 @@ export default function Home() {
                 )}
               </Button>
             ) : (
-              <Button
-                data-testid="button-stop"
-                onClick={handleStop}
-                variant="destructive"
-                size="lg"
-                className="flex-1"
-              >
-                <Square className="w-5 h-5 mr-2" />
-                Stop
-              </Button>
+              <>
+                <Button
+                  data-testid="button-pause"
+                  onClick={handlePauseResume}
+                  variant="secondary"
+                  size="lg"
+                  className="flex-1"
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="w-5 h-5 mr-2" />
+                      Resume
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-5 h-5 mr-2" />
+                      Pause
+                    </>
+                  )}
+                </Button>
+                <Button
+                  data-testid="button-stop"
+                  onClick={handleStop}
+                  variant="destructive"
+                  size="lg"
+                  className="flex-1"
+                >
+                  <Square className="w-5 h-5 mr-2" />
+                  Stop
+                </Button>
+              </>
             )}
           </div>
 
           <Card className="bg-muted/30 border-muted">
             <CardContent className="pt-6">
-              <div className="grid gap-4 sm:grid-cols-3 text-center">
+              <div className="grid gap-4 sm:grid-cols-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-primary">Streaming</div>
+                  <div className="text-sm text-muted-foreground">Sentence-by-Sentence</div>
+                </div>
                 <div>
                   <div className="text-2xl font-bold text-primary">100%</div>
                   <div className="text-sm text-muted-foreground">Client-Side</div>
