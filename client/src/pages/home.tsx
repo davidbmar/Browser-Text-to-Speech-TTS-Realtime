@@ -34,6 +34,7 @@ export default function Home() {
   const [status, setStatus] = useState<TTSStatus>("idle");
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [volume, setVolume] = useState([80]);
+  const [speed, setSpeed] = useState([1.0]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const { toast } = useToast();
@@ -70,6 +71,7 @@ export default function Home() {
 
       const audio = new Audio(audioUrl);
       audio.volume = volume[0] / 100;
+      audio.playbackRate = speed[0];
       audioRef.current = audio;
 
       audio.onended = () => {
@@ -91,7 +93,7 @@ export default function Home() {
         variant: "destructive",
       });
     }
-  }, [text, selectedVoice, volume, currentAudioUrl, toast]);
+  }, [text, selectedVoice, volume, speed, currentAudioUrl, toast]);
 
   const handleStop = useCallback(() => {
     if (audioRef.current) {
@@ -105,6 +107,13 @@ export default function Home() {
     setVolume(newVolume);
     if (audioRef.current) {
       audioRef.current.volume = newVolume[0] / 100;
+    }
+  }, []);
+
+  const handleSpeedChange = useCallback((newSpeed: number[]) => {
+    setSpeed(newSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newSpeed[0];
     }
   }, []);
 
@@ -167,28 +176,46 @@ export default function Home() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Voice</label>
+                <Select
+                  value={selectedVoice}
+                  onValueChange={setSelectedVoice}
+                  disabled={isProcessing || isPlaying}
+                >
+                  <SelectTrigger data-testid="select-voice">
+                    <SelectValue placeholder="Select a voice" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VOICES.map((voice) => (
+                      <SelectItem key={voice.id} value={voice.id} data-testid={`voice-option-${voice.id}`}>
+                        <span className="flex items-center gap-2">
+                          <span>{voice.name}</span>
+                          <span className="text-muted-foreground text-xs">({voice.language})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Voice</label>
-                  <Select
-                    value={selectedVoice}
-                    onValueChange={setSelectedVoice}
-                    disabled={isProcessing || isPlaying}
-                  >
-                    <SelectTrigger data-testid="select-voice">
-                      <SelectValue placeholder="Select a voice" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VOICES.map((voice) => (
-                        <SelectItem key={voice.id} value={voice.id} data-testid={`voice-option-${voice.id}`}>
-                          <span className="flex items-center gap-2">
-                            <span>{voice.name}</span>
-                            <span className="text-muted-foreground text-xs">({voice.language})</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">Speed: {speed[0].toFixed(1)}x</label>
+                  <Slider
+                    data-testid="slider-speed"
+                    value={speed}
+                    onValueChange={handleSpeedChange}
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                    className="py-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0.5x</span>
+                    <span>1x</span>
+                    <span>2x</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -201,6 +228,11 @@ export default function Home() {
                     step={1}
                     className="py-2"
                   />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                  </div>
                 </div>
               </div>
 
