@@ -48,24 +48,29 @@ export function useTTS(options: UseTTSOptions): UseTTSReturn {
       engineRef.current.stop();
     }
 
-    setIsDownloading(true);
-    setDownloadProgress(0);
     setChunks([]);
     setCurrentChunkIndex(0);
     setProgress({ current: 0, total: 0, playing: 0 });
 
     try {
-      await tts.download(optionsRef.current.voiceId as any, (prog) => {
-        const percent = Math.round((prog.loaded / prog.total) * 100);
-        setDownloadProgress(percent);
-      });
+      const storedModels = await tts.stored();
+      const isModelCached = storedModels.includes(optionsRef.current.voiceId as any);
+      
+      if (!isModelCached) {
+        setIsDownloading(true);
+        setDownloadProgress(0);
+        await tts.download(optionsRef.current.voiceId as any, (prog) => {
+          const percent = Math.round((prog.loaded / prog.total) * 100);
+          setDownloadProgress(percent);
+        });
+        setIsDownloading(false);
+      }
     } catch (error) {
       console.error("Failed to download voice model:", error);
       setIsDownloading(false);
       return;
     }
 
-    setIsDownloading(false);
     setIsPlaying(true);
     setIsGenerating(true);
 

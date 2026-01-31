@@ -36,6 +36,12 @@ export default function Home() {
   const [cachedVoices, setCachedVoices] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
+  useEffect(() => {
+    tts.stored().then((storedVoices) => {
+      setCachedVoices(new Set(storedVoices as string[]));
+    }).catch(console.error);
+  }, []);
+
   const {
     speak,
     stop,
