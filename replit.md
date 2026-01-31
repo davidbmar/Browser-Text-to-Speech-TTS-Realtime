@@ -29,8 +29,9 @@ Preferred communication style: Simple, everyday language.
   - Memory-safe URL management
   
 - **useTTS Hook** (`client/src/hooks/use-tts.ts`): React hook wrapper providing:
-  - Simple API: `speak()`, `stop()`, `pause()`, `resume()`
-  - State: `isPlaying`, `isPaused`, `isGenerating`, `isDownloading`
+  - Simple API: `speak()`, `stop()`, `pause()`, `resume()`, `warmUp()`
+  - State: `isPlaying`, `isPaused`, `isGenerating`, `isDownloading`, `isWarmingUp`, `isReady`
+  - Auto warm-up option for instant playback on page load
   - Progress tracking with chunk status visualization
   - Real-time speed/volume adjustment
 
@@ -51,6 +52,10 @@ Preferred communication style: Simple, everyday language.
 1. **Client-Side TTS Processing**: Uses `@diffusionstudio/vits-web` for browser-based text-to-speech via WebAssembly/ONNX, eliminating server dependency for core functionality
 
 2. **Streaming Playback**: Text is split into sentences and processed in parallel. Audio starts playing as soon as the first sentence is ready, reducing perceived latency.
+
+3. **Auto Warm-Up**: Models are pre-loaded and initialized when a voice is selected, so playback starts instantly when the user clicks Speak.
+
+4. **Multi-Core Processing**: Cross-origin isolation headers enable WASM threads for parallel TTS generation across CPU cores.
 
 3. **Monorepo Structure**: 
    - `client/` - React frontend

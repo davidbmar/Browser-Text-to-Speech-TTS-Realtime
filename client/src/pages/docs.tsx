@@ -113,6 +113,13 @@ export default function Docs() {
                         <p className="text-sm text-muted-foreground">Max parallel sentence generation</p>
                       </div>
                     </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="outline" className="font-mono shrink-0">autoWarmUp</Badge>
+                      <div>
+                        <p className="font-medium">boolean (default: false)</p>
+                        <p className="text-sm text-muted-foreground">Pre-load model on mount for instant playback</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -143,6 +150,10 @@ export default function Docs() {
                       <span className="text-muted-foreground">Resume paused playback</span>
                     </div>
                     <div className="flex items-start gap-3">
+                      <Badge className="font-mono shrink-0">warmUp()</Badge>
+                      <span className="text-muted-foreground">Pre-load and initialize the model</span>
+                    </div>
+                    <div className="flex items-start gap-3">
                       <Badge className="font-mono shrink-0">setSpeed(n)</Badge>
                       <span className="text-muted-foreground">Change speed during playback</span>
                     </div>
@@ -171,6 +182,14 @@ export default function Docs() {
                     <div className="flex items-start gap-3">
                       <Badge variant="secondary" className="font-mono shrink-0">isDownloading</Badge>
                       <span className="text-muted-foreground">boolean - Downloading voice model</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="secondary" className="font-mono shrink-0">isWarmingUp</Badge>
+                      <span className="text-muted-foreground">boolean - Initializing WASM runtime</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge variant="secondary" className="font-mono shrink-0">isReady</Badge>
+                      <span className="text-muted-foreground">boolean - Model loaded and ready for instant playback</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge variant="secondary" className="font-mono shrink-0">downloadProgress</Badge>

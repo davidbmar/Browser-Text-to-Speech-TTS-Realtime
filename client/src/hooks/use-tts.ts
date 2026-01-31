@@ -7,6 +7,7 @@ export interface UseTTSOptions {
   speed?: number;
   volume?: number;
   maxConcurrent?: number;
+  autoWarmUp?: boolean;
 }
 
 export interface UseTTSReturn {
@@ -14,23 +15,30 @@ export interface UseTTSReturn {
   stop: () => void;
   pause: () => void;
   resume: () => void;
+  warmUp: () => Promise<void>;
   setSpeed: (speed: number) => void;
   setVolume: (volume: number) => void;
   isPlaying: boolean;
   isPaused: boolean;
   isGenerating: boolean;
   isDownloading: boolean;
+  isWarmingUp: boolean;
+  isReady: boolean;
   downloadProgress: number;
   chunks: TTSChunk[];
   currentChunkIndex: number;
   progress: { current: number; total: number; playing: number };
 }
 
+const warmedUpVoices = new Set<string>();
+
 export function useTTS(options: UseTTSOptions): UseTTSReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [chunks, setChunks] = useState<TTSChunk[]>([]);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
@@ -43,6 +51,55 @@ export function useTTS(options: UseTTSOptions): UseTTSReturn {
     optionsRef.current = options;
   }, [options]);
 
+  useEffect(() => {
+    setIsReady(warmedUpVoices.has(options.voiceId));
+  }, [options.voiceId]);
+
+  const warmUp = useCallback(async () => {
+    const voiceId = optionsRef.current.voiceId;
+    
+    if (warmedUpVoices.has(voiceId)) {
+      setIsReady(true);
+      return;
+    }
+
+    try {
+      const storedModels = await tts.stored();
+      const isModelCached = storedModels.includes(voiceId as any);
+
+      if (!isModelCached) {
+        setIsDownloading(true);
+        setDownloadProgress(0);
+        await tts.download(voiceId as any, (prog) => {
+          const percent = Math.round((prog.loaded / prog.total) * 100);
+          setDownloadProgress(percent);
+        });
+        setIsDownloading(false);
+      }
+
+      setIsWarmingUp(true);
+      
+      await tts.predict({
+        text: ".",
+        voiceId: voiceId as any,
+      });
+
+      warmedUpVoices.add(voiceId);
+      setIsWarmingUp(false);
+      setIsReady(true);
+    } catch (error) {
+      console.error("Failed to warm up voice model:", error);
+      setIsDownloading(false);
+      setIsWarmingUp(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (options.autoWarmUp) {
+      warmUp();
+    }
+  }, [options.voiceId, options.autoWarmUp, warmUp]);
+
   const speak = useCallback(async (text: string) => {
     if (engineRef.current) {
       engineRef.current.stop();
@@ -52,23 +109,8 @@ export function useTTS(options: UseTTSOptions): UseTTSReturn {
     setCurrentChunkIndex(0);
     setProgress({ current: 0, total: 0, playing: 0 });
 
-    try {
-      const storedModels = await tts.stored();
-      const isModelCached = storedModels.includes(optionsRef.current.voiceId as any);
-      
-      if (!isModelCached) {
-        setIsDownloading(true);
-        setDownloadProgress(0);
-        await tts.download(optionsRef.current.voiceId as any, (prog) => {
-          const percent = Math.round((prog.loaded / prog.total) * 100);
-          setDownloadProgress(percent);
-        });
-        setIsDownloading(false);
-      }
-    } catch (error) {
-      console.error("Failed to download voice model:", error);
-      setIsDownloading(false);
-      return;
+    if (!warmedUpVoices.has(optionsRef.current.voiceId)) {
+      await warmUp();
     }
 
     setIsPlaying(true);
@@ -105,7 +147,7 @@ export function useTTS(options: UseTTSOptions): UseTTSReturn {
 
     engineRef.current = engine;
     await engine.speak(text);
-  }, []);
+  }, [warmUp]);
 
   const stop = useCallback(() => {
     engineRef.current?.stop();
@@ -146,12 +188,15 @@ export function useTTS(options: UseTTSOptions): UseTTSReturn {
     stop,
     pause,
     resume,
+    warmUp,
     setSpeed,
     setVolume,
     isPlaying,
     isPaused,
     isGenerating,
     isDownloading,
+    isWarmingUp,
+    isReady,
     downloadProgress,
     chunks,
     currentChunkIndex,

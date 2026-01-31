@@ -53,6 +53,8 @@ export default function Home() {
     isPaused,
     isGenerating,
     isDownloading,
+    isWarmingUp,
+    isReady,
     downloadProgress,
     chunks,
     currentChunkIndex,
@@ -62,6 +64,7 @@ export default function Home() {
     speed: speed[0],
     volume: volume[0] / 100,
     maxConcurrent: 2,
+    autoWarmUp: true,
   });
 
   const handleSpeak = useCallback(async () => {
@@ -108,7 +111,7 @@ export default function Home() {
     setTTSSpeed(newSpeed[0]);
   }, [setTTSSpeed]);
 
-  const isProcessing = isDownloading || (isGenerating && chunks.length === 0);
+  const isProcessing = isDownloading || isWarmingUp || (isGenerating && chunks.length === 0);
   const isActive = isPlaying || isGenerating;
 
   const selectedVoiceInfo = VOICES.find(v => v.id === selectedVoice);
@@ -240,20 +243,30 @@ export default function Home() {
 
               {selectedVoiceInfo && (
                 <div className={`flex items-center gap-2 text-sm rounded-md px-3 py-2 ${
-                  cachedVoices.has(selectedVoice) 
+                  isReady 
                     ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                    : isWarmingUp || isDownloading
+                    ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
                     : "bg-muted/50 text-muted-foreground"
                 }`}>
-                  {cachedVoices.has(selectedVoice) ? (
+                  {isReady ? (
                     <Check className="w-4 h-4" />
-                  ) : (
+                  ) : isWarmingUp ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isDownloading ? (
                     <Download className="w-4 h-4" />
+                  ) : (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   )}
                   <span>
                     Model: <strong>{selectedVoiceInfo.name}</strong>
-                    {cachedVoices.has(selectedVoice) 
-                      ? " (cached - ready to use)" 
-                      : " (~20-50MB, downloads on first use)"}
+                    {isReady 
+                      ? " - Ready to speak instantly!" 
+                      : isWarmingUp
+                      ? " - Warming up..."
+                      : isDownloading
+                      ? ` - Downloading (${downloadProgress}%)`
+                      : " - Loading..."}
                   </span>
                 </div>
               )}
@@ -342,14 +355,14 @@ export default function Home() {
               <Button
                 data-testid="button-speak"
                 onClick={handleSpeak}
-                disabled={isProcessing || !text.trim()}
+                disabled={!text.trim() || (!isReady && !isActive)}
                 size="lg"
                 className="flex-1"
               >
-                {isProcessing ? (
+                {!isReady ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Downloading...
+                    {isDownloading ? "Downloading..." : "Warming up..."}
                   </>
                 ) : (
                   <>
