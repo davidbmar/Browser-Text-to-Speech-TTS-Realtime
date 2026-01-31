@@ -12,6 +12,14 @@ declare module "http" {
   }
 }
 
+// Enable cross-origin isolation for multi-threaded WebAssembly
+// This allows ONNX runtime to use multiple CPU cores for TTS generation
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
