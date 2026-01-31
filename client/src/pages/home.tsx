@@ -53,7 +53,7 @@ export default function Home() {
       setStatus("downloading");
       setDownloadProgress(0);
 
-      await tts.download(selectedVoice, (progress) => {
+      await tts.download(selectedVoice as any, (progress) => {
         const percent = Math.round((progress.loaded / progress.total) * 100);
         setDownloadProgress(percent);
       });
@@ -62,7 +62,7 @@ export default function Home() {
 
       const wav = await tts.predict({
         text: text,
-        voiceId: selectedVoice,
+        voiceId: selectedVoice as any,
       });
 
       const audioUrl = URL.createObjectURL(wav);
