@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Volume2, Play, Square, Download, Mic, Settings2, Loader2, Check, Pause, SkipForward } from "lucide-react";
+import { Volume2, Play, Square, Download, Settings2, Loader2, Check, Pause, SkipForward } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTTS } from "@/hooks/use-tts";
 
@@ -128,13 +128,8 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header className="text-center mb-8 pt-4">
-          <div className="inline-flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <Mic className="w-8 h-8 text-primary" />
-            </div>
-          </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
-            Browser TTS
+            Try It Out
           </h1>
           <p className="text-muted-foreground text-lg">
             Real-time streaming text-to-speech with sentence chunking
