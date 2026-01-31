@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
-import { Volume2, Play, Square, Download, Mic, Settings2, Loader2 } from "lucide-react";
+import { Volume2, Play, Square, Download, Mic, Settings2, Loader2, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Voice {
@@ -37,6 +37,7 @@ export default function Home() {
   const [speed, setSpeed] = useState([1.0]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
+  const [cachedVoices, setCachedVoices] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const handleSpeak = useCallback(async () => {
@@ -51,13 +52,29 @@ export default function Home() {
         URL.revokeObjectURL(currentAudioUrl);
       }
 
-      setStatus("downloading");
-      setDownloadProgress(0);
+      const isVoiceCached = cachedVoices.has(selectedVoice);
+      
+      if (!isVoiceCached) {
+        setStatus("downloading");
+        setDownloadProgress(0);
+      } else {
+        setStatus("generating");
+      }
 
       await tts.download(selectedVoice as any, (progress) => {
-        const percent = Math.round((progress.loaded / progress.total) * 100);
-        setDownloadProgress(percent);
+        if (!isVoiceCached) {
+          const percent = Math.round((progress.loaded / progress.total) * 100);
+          setDownloadProgress(percent);
+        }
       });
+
+      if (!isVoiceCached) {
+        setCachedVoices(prev => {
+          const newSet = new Set(prev);
+          newSet.add(selectedVoice);
+          return newSet;
+        });
+      }
 
       setStatus("generating");
 
@@ -93,7 +110,7 @@ export default function Home() {
         variant: "destructive",
       });
     }
-  }, [text, selectedVoice, volume, speed, currentAudioUrl, toast]);
+  }, [text, selectedVoice, volume, speed, currentAudioUrl, cachedVoices, toast]);
 
   const handleStop = useCallback(() => {
     if (audioRef.current) {
@@ -237,10 +254,21 @@ export default function Home() {
               </div>
 
               {selectedVoiceInfo && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-                  <Download className="w-4 h-4" />
+                <div className={`flex items-center gap-2 text-sm rounded-md px-3 py-2 ${
+                  cachedVoices.has(selectedVoice) 
+                    ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                    : "bg-muted/50 text-muted-foreground"
+                }`}>
+                  {cachedVoices.has(selectedVoice) ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                   <span>
-                    Model: <strong>{selectedVoiceInfo.name}</strong> (~20-50MB, cached after first use)
+                    Model: <strong>{selectedVoiceInfo.name}</strong>
+                    {cachedVoices.has(selectedVoice) 
+                      ? " (cached - ready to use)" 
+                      : " (~20-50MB, downloads on first use)"}
                   </span>
                 </div>
               )}
