@@ -1,18 +1,30 @@
 # Browser TTS - Real-time Text to Speech
 
-A browser-based text-to-speech library that runs entirely client-side using WebAssembly and ONNX models. No API keys required, completely free, and works offline after the first model download.
+A high-performance, browser-based text-to-speech system that runs **100% client-side** using WebAssembly and ONNX neural models. This project demonstrates real-time audio synthesis in the browser with streaming playback, multi-core processing, and zero server costs.
+
+**Key Innovation:** Unlike traditional TTS services that require API calls and server costs, this runs entirely in your browser using neural TTS models compiled to WebAssembly. Audio generation happens locally on your machine, with no data sent to external servers.
 
 ![Browser TTS Interface](UI_Picture.png)
 
 ## Features
 
-- **100% Client-Side** - No server costs, no API keys, runs entirely in the browser
+- **100% Client-Side** - No server costs, no API keys, runs entirely in the browser using WebAssembly
 - **Streaming Playback** - Audio starts playing as the first sentence is ready while the rest generates in the background
 - **Multi-Core Processing** - Leverages WebAssembly threads for parallel generation across CPU cores
 - **Auto Warm-Up** - Pre-loads models for instant playback when the user clicks speak
-- **8 Built-in Voices** - English (US/UK), German, French, and Spanish
+- **8 Built-in Voices** - English (US/UK), German, French, and Spanish with natural prosody
 - **Offline Support** - Models are cached in the browser, works offline after first download
-- **Modern Stack** - React 18, TypeScript, Tailwind CSS, and shadcn/ui
+- **Privacy-First** - All processing happens locally; no data sent to external servers
+- **Modern Stack** - React 18, TypeScript, Vite, Tailwind CSS, and shadcn/ui
+
+## What Makes This Different?
+
+Most text-to-speech solutions require:
+- **Cloud API calls** (Google Cloud TTS, Amazon Polly) - costs money, requires internet, sends your text to servers
+- **Native apps** (macOS `say` command) - platform-specific, no web integration
+- **Browser's built-in speech** (`speechSynthesis`) - limited voices, inconsistent quality across browsers
+
+This project uses **neural TTS models** (VITS architecture trained on Piper datasets) compiled to WebAssembly with ONNX Runtime. The entire inference pipeline runs in your browser with performance comparable to cloud services.
 
 ## Quick Start
 
@@ -26,11 +38,22 @@ cd Browser-Text-to-Speech-TTS-Realtime
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (default port 5000)
 npm run dev
+
+# Or specify a custom port
+PORT=3344 npm run dev
 ```
 
-Open `http://localhost:5000` in your browser.
+Open your browser to:
+- **Default:** `http://localhost:5000`
+- **Custom port:** `http://localhost:3344` (or whatever port you specified)
+
+### First-Time Setup Notes
+
+- **Model Download:** On first use, the browser will download the selected voice model (~20-50MB). This happens once and is cached in your browser's IndexedDB.
+- **Cross-Origin Isolation:** The server automatically sets COOP/COEP headers required for multi-threaded WebAssembly.
+- **Browser Requirements:** Chrome 89+, Firefox 89+, Safari 15+, or Edge 89+ with WebAssembly support.
 
 ### Basic Usage
 
@@ -250,9 +273,35 @@ npm run check
 # Build for production
 npm run build
 
-# Start production server
+# Start production server (default port 5000)
 npm start
+
+# Start production server on custom port
+PORT=8080 npm start
 ```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `5000` | Server port for both API and client |
+| `NODE_ENV` | `development` | Set to `production` for optimized builds |
+
+### Troubleshooting
+
+**Server won't start:**
+- Make sure port 5000 (or your custom port) isn't already in use
+- On macOS, the `reusePort` option is not supported (fixed in latest version)
+
+**Models not loading:**
+- Check browser console for CORS errors
+- Ensure COOP/COEP headers are being set (automatic in this server)
+- Try clearing browser cache and reloading
+
+**Poor audio quality:**
+- Increase the quality level (try "high" quality models if available)
+- Adjust the speed setting (values closer to 1.0 are more natural)
+- Try a different voice model
 
 ## Credits
 
