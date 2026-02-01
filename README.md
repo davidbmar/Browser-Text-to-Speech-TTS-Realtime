@@ -2,7 +2,7 @@
 
 A browser-based text-to-speech library that runs entirely client-side using WebAssembly and ONNX models. No API keys required, completely free, and works offline after the first model download.
 
-**[Live Demo](https://your-app.replit.app)** | **[Documentation](#api-reference)**
+![Browser TTS Interface](UI_Picture.png)
 
 ## Features
 
@@ -12,15 +12,25 @@ A browser-based text-to-speech library that runs entirely client-side using WebA
 - **Auto Warm-Up** - Pre-loads models for instant playback when the user clicks speak
 - **8 Built-in Voices** - English (US/UK), German, French, and Spanish
 - **Offline Support** - Models are cached in the browser, works offline after first download
-- **Tiny Bundle** - Uses Piper VITS models via `@diffusionstudio/vits-web`
+- **Modern Stack** - React 18, TypeScript, Tailwind CSS, and shadcn/ui
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-npm install @diffusionstudio/vits-web
+# Clone the repository
+git clone https://github.com/davidbmar/Browser-Text-to-Speech-TTS-Realtime.git
+cd Browser-Text-to-Speech-TTS-Realtime
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
+
+Open `http://localhost:5000` in your browser.
 
 ### Basic Usage
 
@@ -35,7 +45,7 @@ function TextToSpeech() {
 
   return (
     <div>
-      <button 
+      <button
         onClick={() => speak("Hello! This text will be spoken out loud.")}
         disabled={!isReady}
       >
@@ -51,16 +61,16 @@ function TextToSpeech() {
 
 ```tsx
 function AdvancedTTS() {
-  const { 
-    speak, 
-    stop, 
-    pause, 
+  const {
+    speak,
+    stop,
+    pause,
     resume,
-    isPlaying, 
+    isPlaying,
     isPaused,
     isGenerating,
     chunks,
-    progress 
+    progress
   } = useTTS({
     voiceId: "en_US-hfc_female-medium",
     speed: 1.0,
@@ -74,14 +84,14 @@ function AdvancedTTS() {
       <button onClick={() => speak("Long text with multiple sentences. Each one generates separately. You'll hear audio before it's all done!")}>
         Speak
       </button>
-      
+
       <p>Progress: {progress.current}/{progress.total} sentences ready</p>
-      
+
       <div>
         {chunks.map((chunk, i) => (
-          <span key={i} style={{ 
-            color: chunk.status === 'playing' ? 'green' : 
-                   chunk.status === 'ready' ? 'blue' : 'gray' 
+          <span key={i} style={{
+            color: chunk.status === 'playing' ? 'green' :
+                   chunk.status === 'ready' ? 'blue' : 'gray'
           }}>
             {chunk.text}
           </span>
@@ -91,6 +101,14 @@ function AdvancedTTS() {
   );
 }
 ```
+
+## Documentation
+
+- [Quick Start Guide](QUICK_START.md) - Get started in 5 minutes
+- [Setup Guide](SETUP.md) - Detailed installation and configuration
+- [API Reference & Developer Docs](replit.md) - Architecture and technical details
+- [Improvements Roadmap](IMPROVEMENTS.md) - Suggested enhancements and future features
+- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
 
 ## API Reference
 
@@ -216,17 +234,24 @@ app.use((req, res, next) => {
 
 Requires WebAssembly and Web Audio API support.
 
+## Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui
+- **Backend**: Express, TypeScript (ESM)
+- **TTS Engine**: @diffusionstudio/vits-web (WebAssembly/ONNX)
+- **State Management**: TanStack React Query
+
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
+# Run TypeScript type checking
+npm run check
 
 # Build for production
 npm run build
+
+# Start production server
+npm start
 ```
 
 ## Credits
@@ -237,4 +262,4 @@ npm run build
 
 ## License
 
-MIT License - feel free to use in personal and commercial projects.
+MIT License - feel free to use in personal and commercial projects. See [LICENSE](LICENSE) for details.

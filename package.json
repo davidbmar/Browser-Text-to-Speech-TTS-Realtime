@@ -1,14 +1,33 @@
 {
-  "name": "rest-express",
+  "name": "browser-tts-realtime",
   "version": "1.0.0",
+  "description": "Real-time browser-based text-to-speech using WebAssembly and ONNX",
   "type": "module",
   "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/browser-tts-realtime"
+  },
+  "keywords": [
+    "text-to-speech",
+    "tts",
+    "webassembly",
+    "onnx",
+    "browser",
+    "real-time",
+    "speech-synthesis",
+    "vits"
+  ],
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "lint": "echo 'ESLint not yet configured. Run: npm install -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-react eslint-plugin-react-hooks'",
+    "format": "echo 'Prettier not yet configured. Run: npm install -D prettier eslint-config-prettier'",
+    "format:check": "echo 'Prettier not yet configured'"
   },
   "dependencies": {
     "@diffusionstudio/vits-web": "^1.0.3",
